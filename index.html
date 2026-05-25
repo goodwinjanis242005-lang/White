@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>白板笔记</title>
+<style>
+:root{--bg:#f5f5f5;--s:#fff;--b:#e0e0e0;--t:#1a1a1a;--t2:#777;--a:#1a1a1a}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--t);height:100dvh;overflow:hidden;display:flex;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+
+/* login */
+.login-overlay{position:fixed;inset:0;background:#1a1a1a;z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:20px}
+.login-overlay.hidden{display:none}
+.login-box{background:#fff;border-radius:24px;padding:30px 24px;width:400px;max-width:92vw;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.35)}
+.login-box h1{font-size:24px;font-weight:700;margin-bottom:2px}
+.login-box .sub{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;margin-bottom:16px}
+.login-box input[type=text]{width:100%;padding:12px 16px;border:2px solid #e0e0e0;border-radius:12px;font-size:15px;text-align:center;outline:none;font-family:inherit;transition:border 0.2s;margin-bottom:8px}
+.login-box input:focus{border-color:#1a1a1a}
+.avatar-pick{margin:12px 0}.avatar-pick .lbl{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.avatar-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.avatar-row span{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;border:3px solid transparent;background:#f5f5f5;transition:all 0.15s}
+.avatar-row span:hover{background:#e8e8e8}.avatar-row span.sel{border-color:#1a1a1a;background:#e0e0e0}
+.login-box .go-btn{width:100%;padding:14px;background:#1a1a1a;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
+.login-box .go-btn:hover{background:#333}
+.login-box .skip{display:block;margin-top:12px;font-size:12px;color:#999;cursor:pointer;text-decoration:underline}
+
+/* sidebar */
+.sidebar{width:260px;min-width:260px;background:var(--s);border-right:1px solid var(--b);display:flex;flex-direction:column;z-index:100;transition:transform 0.3s}
+.side-hd{padding:14px 16px 10px;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:10px}
+.side-hd .uav{width:34px;height:34px;border-radius:50%;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;cursor:pointer}
+.side-hd h1{font-size:14px;font-weight:700}.side-hd .sub{font-size:10px;color:var(--t2)}
+.tree-acts{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--b);flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:3px;padding:7px 12px;border:1px solid var(--b);background:var(--s);color:var(--t);border-radius:8px;cursor:pointer;font-size:11px;font-weight:500;transition:all 0.2s;white-space:nowrap;font-family:inherit}
+.btn:active{background:#f0f0f0}.btn.pri{background:var(--a);color:#fff;border-color:var(--a)}.btn.sm{padding:5px 10px;font-size:10px}
+.folder-tree{flex:1;overflow-y:auto;padding:4px 0;-webkit-overflow-scrolling:touch}
+.ti{display:flex;align-items:center;gap:4px;padding:6px 14px;cursor:pointer;font-size:12px;transition:background 0.2s;border-left:3px solid transparent;min-height:32px}
+.ti:active{background:#f5f5f5}.ti.active{background:#eee;border-left-color:var(--a);font-weight:600}
+.ti .exp{width:14px;text-align:center;font-size:8px;color:#999;flex-shrink:0}
+.ti .ficon{font-size:13px;flex-shrink:0}.ti .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ti .cnt{font-size:9px;color:#999;background:#eee;padding:1px 5px;border-radius:8px}
+.ti .acts{display:none;gap:1px}.ti:hover .acts{display:flex}
+.ti .acts button{background:none;border:none;cursor:pointer;font-size:10px;padding:2px 4px;border-radius:3px;color:#999}
+.ti .acts button:active{background:#ddd;color:#333}
+.tc.collapsed{display:none}
+.mdot{display:inline-block;width:5px;height:5px;background:#4CAF50;border-radius:50%;flex-shrink:0}
+
+/* main */
+.main-area{flex:1;display:flex;flex-direction:column;position:relative;min-width:0}
+.toolbar{display:flex;align-items:center;gap:5px;padding:6px 10px;background:var(--s);border-bottom:1px solid var(--b);z-index:50;flex-wrap:wrap;min-height:38px}
+.toolbar .sp{width:1px;height:16px;background:var(--b);margin:0 2px}
+.hamburger{display:none;background:none;border:none;font-size:20px;cursor:pointer;padding:4px 6px;color:var(--t);line-height:1}
+.shapes{display:flex;gap:1px}.shapes button{width:26px;height:26px;padding:0;border:1px solid var(--b);background:#fff;cursor:pointer;border-radius:5px;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.shapes button.active{border-color:var(--a);background:#eee}
+.srch{padding:5px 8px 5px 24px;border:1px solid var(--b);border-radius:7px;font-size:10px;width:110px;outline:none;font-family:inherit;background:#f8f8f8 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 6px center no-repeat;transition:all 0.2s}
+.srch:focus{border-color:var(--a);background-color:#fff;width:140px}
+.tbar-title{flex:1;font-size:12px;font-weight:600;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:40px}
+
+/* canvas */
+.cwrap{flex:1;position:relative;overflow:hidden;cursor:grab}
+.cwrap:active{cursor:grabbing}
+.wb{position:absolute;top:0;left:0;width:5000px;height:5000px;transform-origin:0 0}
+.empty-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#ccc;pointer-events:none;z-index:4}
+.empty-hint .ei{font-size:40px;margin-bottom:8px}.empty-hint p{font-size:12px;line-height:1.7}
+
+/* theme backgrounds */
+.bg-d{background-color:#fafafa;background-image:radial-gradient(circle,#ddd 1px,transparent 1px);background-size:24px 24px}
+.bg-c{background-color:#fdf9f4;background-image:radial-gradient(circle,#d4c0a0 1.2px,transparent 1.2px),radial-gradient(circle at 30px 30px,#c8b090 1.5px,transparent 1.5px);background-size:28px 28px,56px 56px}
+.bg-o{background-color:#f5f9fd;background-image:linear-gradient(45deg,#dceaf8 25%,transparent 25%),linear-gradient(-45deg,#dceaf8 25%,transparent 25%);background-size:40px 40px;background-position:0 0,0 20px,20px -20px,-20px 0}
+.bg-f{background-color:#f7faf8;background-image:radial-gradient(circle at 20px 20px,#c8e0d0 2px,transparent 2px);background-size:40px 40px}
+.bg-s{background-color:#fefaf7;background-image:repeating-linear-gradient(0deg,transparent,transparent 8px,#fdf0e8 8px,#fdf0e8 9px),repeating-linear-gradient(90deg,transparent,transparent 8px,#fdf0e8 8px,#fdf0e8 9px)}
+.bg-n{background-color:#1e1e1e;background-image:radial-gradient(circle,#333 1px,transparent 1px);background-size:24px 24px}
+
+/* cards */
+.card{position:absolute;min-width:150px;max-width:340px;background:var(--s);border:1px solid var(--b);border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);z-index:10;cursor:grab;transition:box-shadow 0.2s,border-color 0.2s}
+.card:active{cursor:grabbing}.card:hover{box-shadow:0 6px 24px rgba(0,0,0,0.1);border-color:#ccc}
+.card.selected{border-color:var(--a);box-shadow:0 0 0 2px rgba(0,0,0,0.12);z-index:20}
+.card.dragging{opacity:0.85;z-index:30}
+
+/* card shapes */
+.card.s-rounded{border-radius:16px}.card.s-circle{border-radius:50%;min-width:110px;max-width:260px}
+.card.s-diamond{clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);border-radius:0}
+.card.s-hexagon{clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);border-radius:0}
+.card.s-sticky{border-radius:2px 14px 14px 14px}
+.card.s-star{clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);border-radius:0}
+
+/* card colors */
+.card.c0{background:#fff}.card.c1{background:#fffef9}.card.c2{background:#faf7f2;border-color:#d4c5a0}
+.card.c3{background:#f6faf8;border-color:#c4ddd2}.card.c4{background:#faf8ff;border-color:#d8d0f0}
+.card.c5{background:#fffaf7;border-color:#f0d0c0}.card.c6{background:#f7f9fc;border-color:#c0d8f0}
+.card.c7{background:#fff7fa;border-color:#f0c0d0}.card.c8{background:#fdf9f4;border-color:#d4c0a0}
+.card.c9{background:#1a1a1a;color:#eee;border-color:#333}
+
+.chd{display:flex;align-items:center;gap:5px;padding:6px 12px 2px;font-size:9px;color:var(--t2)}
+.chd .cdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}.chd .ctm{flex:1;font-size:9px}
+.chd button{background:none;border:none;cursor:pointer;font-size:12px;color:#bbb;padding:2px 3px;border-radius:4px;line-height:1}
+.chd button:hover{color:#666;background:#f0f0f0}
+
+.cbd{padding:0 12px 8px;min-height:32px;word-break:break-word}
+.cbd[contenteditable]{outline:none;cursor:text;min-height:50px;border-radius:6px;padding:7px 12px;margin:0 12px 8px;background:rgba(0,0,0,0.02);-webkit-user-select:text;user-select:text}
+.cbd[contenteditable]:focus{background:#fff;box-shadow:inset 0 0 0 2px var(--a)}
+.cbd[contenteditable]:empty::before{content:'输入内容...';color:#ccc;pointer-events:none}
+.cbd img{max-width:100%;border-radius:8px;margin:3px 0;cursor:pointer}
+
+.ctgs{display:flex;flex-wrap:wrap;gap:3px;padding:0 12px 6px}
+.ctg{font-size:9px;padding:2px 6px;background:#f0f0f0;border-radius:10px;color:#666}
+
+.cft{display:flex;align-items:center;gap:2px;padding:5px 12px;border-top:1px solid #f0f0f0;font-size:10px}
+.cft button{background:none;border:none;cursor:pointer;font-size:13px;padding:2px 5px;border-radius:4px;color:#999;transition:all 0.2s}
+.cft button:hover{background:#f0f0f0;color:#333}.cft button.playing{color:#4CAF50}
+.cft .ccnt{margin-left:auto;font-size:9px;color:#bbb}
+
+/* modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:3000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);padding:20px}
+.modal{background:var(--s);border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,0.2);padding:22px 20px;width:100%;max-width:400px;max-height:80vh;overflow-y:auto}
+.modal h3{font-size:15px;margin-bottom:14px}.modal label{display:block;font-size:10px;color:var(--t2);margin-bottom:3px;margin-top:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.modal input,.modal textarea{width:100%;padding:9px 12px;border:1px solid var(--b);border-radius:8px;font-size:13px;font-family:inherit;outline:none}
+.modal input:focus,.modal textarea:focus{border-color:var(--a)}.modal textarea{resize:vertical;min-height:70px}
+.modal .btn-row{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+
+/* context menu */
+.cm{position:fixed;background:var(--s);border:1px solid var(--b);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.14);z-index:4000;min-width:150px;padding:6px 0;display:none}
+.cm.show{display:block}.cmi{padding:8px 16px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:background 0.2s}
+.cmi:hover{background:#f5f5f5}.cm .dv{height:1px;background:var(--b);margin:4px 0}
+
+/* now playing */
+.np{position:fixed;bottom:10px;right:10px;background:var(--s);border:1px solid var(--b);border-radius:18px;padding:5px 14px 5px 6px;display:flex;align-items:center;gap:6px;box-shadow:0 4px 20px rgba(0,0,0,0.1);z-index:500;font-size:11px;max-width:220px}
+.np.hidden{display:none}.np .npi{width:24px;height:24px;border-radius:50%;background:var(--a);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.np .npd{flex:1;overflow:hidden}.np .npt{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.np .npc{font-size:9px;color:var(--t2)}.np button{background:none;border:none;cursor:pointer;font-size:14px;color:#666;padding:3px}
+
+/* float buttons */
+.fc{position:fixed;bottom:56px;right:10px;display:flex;flex-direction:column;gap:3px;z-index:500}
+.fc button{width:30px;height:30px;background:var(--s);border:1px solid var(--b);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#666;border-radius:50%;transition:all 0.2s}
+.fc button:hover{background:#f0f0f0;color:#333}.fc .zml{font-size:9px;text-align:center;color:#999}
+
+/* toast */
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--a);color:#fff;padding:9px 20px;border-radius:18px;font-size:12px;z-index:5000;box-shadow:0 4px 20px rgba(0,0,0,0.2);animation:toastIn 0.3s ease;pointer-events:none}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* mobile */
+@media(max-width:768px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:200;transform:translateX(-100%);box-shadow:4px 0 24px rgba(0,0,0,0.15);width:260px;min-width:260px}
+  .sidebar.open{transform:translateX(0)}.hamburger{display:block}
+  .toolbar{gap:2px;padding:5px 6px}.toolbar .sp{display:none}
+  .shapes button{width:22px;height:22px;font-size:10px}
+  .srch{width:60px;font-size:9px}.srch:focus{width:90px}.tbar-title{display:none}
+  .card{max-width:240px!important;min-width:100px!important}
+  .sb-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:199;display:none}
+  .sb-overlay.show{display:block}
+}
+</style>
+</head>
+<body>
+
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h1>白板笔记</h1>
+    <div class="sub">Whiteboard Notes</div>
+    <input type="text" id="loginName" placeholder="输入你的昵称..." maxlength="20" autocomplete="off">
+    <div class="avatar-pick">
+      <div class="lbl">选择头像</div>
+      <div class="avatar-row" id="avatarRow"></div>
+    </div>
+    <button class="go-btn" id="loginBtn">开始创作</button>
+    <span class="skip" id="skipBtn">跳过，先体验</span>
+  </div>
+</div>
+
+<div class="sb-overlay" id="sbOverlay"></div>
+
+<div class="sidebar" id="sidebar">
+  <div class="side-hd">
+    <div class="uav" id="sidebarAvatar">👤</div>
+    <div><h1 id="sidebarTitle">白板笔记</h1><div class="sub" id="sidebarUser">未登录</div></div>
+  </div>
+  <div class="tree-acts">
+    <button class="btn pri sm" id="btnAddFolder">+ 文件夹</button>
+    <button class="btn sm" id="btnAddCard">+ 卡片</button>
+    <button class="btn sm" id="btnExport">导出</button>
+    <button class="btn sm" id="btnImport">导入</button>
+    <input type="file" id="importFile" accept=".json" style="display:none">
+  </div>
+  <div class="folder-tree" id="folderTree"></div>
+</div>
+
+<div class="main-area">
+  <div class="toolbar">
+    <button class="hamburger" id="hamburger">☰</button>
+    <span class="tbar-title" id="toolbarTitle">全部笔记</span>
+    <div class="sp"></div>
+    <select class="srch" style="width:auto;padding:5px 8px;background:#fff;font-size:10px;border:1px solid var(--b);border-radius:7px;font-family:inherit" id="themeSel">
+      <option value="default">默认主题</option>
+      <option value="coffee">☕ 咖啡</option>
+      <option value="ocean">🌊 海洋</option>
+      <option value="forest">🌿 森林</option>
+      <option value="sunset">🌅 日落</option>
+      <option value="dark">🌙 暗夜</option>
+    </select>
+    <div class="sp"></div>
+    <div class="shapes">
+      <button class="active" data-shape="rounded" title="圆角">▢</button>
+      <button data-shape="circle" title="圆形">○</button>
+      <button data-shape="diamond" title="菱形">◇</button>
+      <button data-shape="hexagon" title="六边形">⬡</button>
+      <button data-shape="sticky" title="便签">▣</button>
+      <button data-shape="star" title="星形">★</button>
+    </div>
+    <input type="text" class="srch" placeholder="搜索..." id="searchInput">
+    <button class="btn sm" id="btnFocus">⊙</button>
+    <button class="btn sm" id="btnReset">↺</button>
+  </div>
+  <div class="cwrap bg-d" id="cwrap">
+    <div class="wb" id="wb"></div>
+    <div class="empty-hint" id="emptyHint"><div class="ei">&#x1F4DD;</div><p>双击空白处创建卡片<br>单击拖拽平移画布<br>滚轮缩放</p></div>
+  </div>
+</div>
+
+<div class="fc">
+  <button id="btnZoomIn">+</button>
+  <div class="zml" id="zoomLabel">100%</div>
+  <button id="btnZoomOut">−</button>
+</div>
+<div class="cm" id="cm"></div>
+<div class="np hidden" id="np">
+  <div class="npi">♪</div>
+  <div class="npd"><div class="npt" id="npTitle"></div><div class="npc" id="npCard"></div></div>
+  <button id="npPlayBtn">▶</button>
+  <button id="npStopBtn">⏹</button>
+</div>
+
+<template id="cardTpl">
+  <div class="card s-rounded" data-id="">
+    <div class="chd"><span class="cdot"></span><span class="ctm"></span><button class="del-btn" title="删除">×</button></div>
+    <div class="cbd" contenteditable="true"></div>
+    <div class="ctgs"></div>
+    <div class="cft">
+      <button class="music-btn" title="背景音乐">🎵</button>
+      <button class="image-btn" title="插入图片">🖼</button>
+      <button class="video-btn" title="插入视频">🎬</button>
+      <button class="tag-btn" title="添加标签">🏷</button>
+      <button class="color-btn" title="更换颜色">🎨</button>
+      <span class="ccnt"></span>
+      <input type="file" class="mu-inp" accept="audio/*" style="display:none">
+      <input type="file" class="img-inp" accept="image/*" style="display:none">
+      <input type="file" class="vid-inp" accept="video/*" style="display:none">
+    </div>
+  </div>
+</template>
+
+<script>
+'use strict';
+
+// === USER ===
+let currentUser = null;
+const AVATARS = ['🐱','🐶','🐰','🐻','🐼','🦊','🐸','🐵','🐙','🦄','🐳','🦋','🌸','🌟','💎','🎀','🦉','🐧','🐨','🦁','🐯','🐮','🐷','🐭','🌻','🍀','🌈','⭐','🌙','☀️','🔥','💜'];
+let selectedAvatar = AVATARS[0];
+
+function loadUser() {
+  try {
+    const s = localStorage.getItem('wm4-u');
+    if (s) { currentUser = JSON.parse(s); selectedAvatar = currentUser.avatar; return true; }
+  } catch(e) {}
+  return false;
+}
+function saveUser() { if (currentUser) localStorage.setItem('wm4-u', JSON.stringify(currentUser)); }
+
+function buildAvatarRow() {
+  const row = document.getElementById('avatarRow');
+  row.innerHTML = '';
+  AVATARS.forEach(function(a, i) {
+    var span = document.createElement('span');
+    span.textContent = a;
+    if (i === 0) span.classList.add('sel');
+    span.addEventListener('click', function() {
+      selectedAvatar = a;
+      row.querySelectorAll('span').forEach(function(s) { s.classList.remove('sel'); });
+      this.classList.add('sel');
+    });
+    row.appendChild(span);
+  });
+}
+
+function doLogin() {
+  var name = document.getElementById('loginName').value.trim();
+  if (!name || name.length < 2) { toast('请输入昵称（至少2个字符）'); return; }
+  currentUser = { name: name, avatar: selectedAvatar, createdAt: Date.now() };
+  saveUser();
+  document.getElementById('loginOverlay').classList.add('hidden');
+  updateSidebarUser();
+  toast('欢迎，' + name);
+}
+
+function skipLogin() {
+  currentUser = { name: '游客', avatar: '👤', createdAt: Date.now() };
+  document.getElementById('loginOverlay').classList.add('hidden');
+  updateSidebarUser();
+  toast('游客模式');
+}
+
+function updateSidebarUser() {
+  if (!currentUser) return;
+  document.getElementById('sidebarAvatar').textContent = currentUser.avatar;
+  document.getElementById('sidebarUser').textContent = currentUser.name;
+  document.getElementById('sidebarTitle').textContent = '我的笔记';
+}
+
+function openProfile() {
+  if (!currentUser) return;
+  var ov = document.createElement('div');
+  ov.className = 'modal-overlay';
+  ov.innerHTML = '<div class="modal"><h3>个人资料</h3><div style="text-align:center"><div id="profAv" style="width:56px;height:56px;border-radius:50%;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 8px;cursor:pointer;border:3px solid transparent">'+currentUser.avatar+'</div><p style="font-size:10px;color:#999">点击换头像</p></div><label>昵称</label><input type="text" id="profName" value="'+escHtml(currentUser.name)+'" maxlength="20"><div class="btn-row"><button class="btn" id="profCancel">取消</button><button class="btn pri" id="profSave">保存</button></div></div>';
+  document.body.appendChild(ov);
+  document.getElementById('profAv').addEventListener('click', function() {
+    var i = AVATARS.indexOf(currentUser.avatar);
+    currentUser.avatar = AVATARS[(i + 1) % AVATARS.length];
+    this.textContent = currentUser.avatar;
+  });
+  document.getElementById('profSave').addEventListener('click', function() {
+    currentUser.name = document.getElementById('profName').value.trim() || currentUser.name;
+    saveUser(); updateSidebarUser(); ov.remove(); toast('已更新');
+  });
+  document.getElementById('profCancel').addEventListener('click', function() { ov.remove(); });
+  ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
+}
+
+// === STATE ===
+var state = {
+  folders: [],
+  cards: {},
+  currentFolderId: null,
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+  selCid: null,
+  q: '',
+  theme: 'default',
+  shape: 'rounded',
+  music: { cid: null, audio: null, playing: false }
+};
+
+// === PERSIST ===
+function loadState() {
+  try {
+    var s = localStorage.getItem('wm4-d');
+    if (s) {
+      var d = JSON.parse(s);
+      state.folders = d.folders || [];
+      state.cards = d.cards || {};
+      state.theme = d.theme || 'default';
+      state.shape = d.shape || 'rounded';
+      // restore music blobs
+      Object.values(state.cards).forEach(function(c) {
+        if (c.musicData && c.musicName) {
+          try {
+            var parts = c.musicData.split(',');
+            var bs = atob(parts[1] || '');
+            var mime = (c.musicData.match(/data:([^;]+)/) || [])[1] || 'audio/mpeg';
+            var ab = new ArrayBuffer(bs.length);
+            var ia = new Uint8Array(ab);
+            for (var i = 0; i < bs.length; i++) ia[i] = bs.charCodeAt(i);
+            c._mb = new Blob([ab], { type: mime });
+          } catch(e) {}
+        }
+      });
+    }
+  } catch(e) {}
+  if (state.folders.length === 0) {
+    state.folders.push({ id: genId(), name: '我的笔记', children: [], expanded: true, createdAt: Date.now() });
+  }
+}
+
+function saveState() {
+  var ts = { folders: state.folders, cards: {}, theme: state.theme, shape: state.shape };
+  for (var id in state.cards) {
+    var c = state.cards[id];
+    var copy = {};
+    for (var k in c) { if (k !== '_mb') copy[k] = c[k]; }
+    ts.cards[id] = copy;
+  }
+  try {
+    localStorage.setItem('wm4-d', JSON.stringify(ts));
+  } catch(e) {
+    // data too big, strip music data
+    for (var cid in ts.cards) { delete ts.cards[cid].musicData; }
+    localStorage.setItem('wm4-d', JSON.stringify(ts));
+  }
+}
+
+function genId() { return 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6); }
+
+// === FOLDERS ===
+function findFolder(fs, id) {
+  for (var i = 0; i < fs.length; i++) {
+    if (fs[i].id === id) return fs[i];
+    if (fs[i].children) { var r = findFolder(fs[i].children, id); if (r) return r; }
+  }
+  return null;
+}
+function getFolderIds(f) {
+  var ids = [f.id];
+  if (f.children) f.children.forEach(function(c) { getFolderIds(c).forEach(function(id) { ids.push(id); }); });
+  return ids;
+}
+function countCardsInFolder(fid) {
+  var count = 0;
+  for (var id in state.cards) { if (state.cards[id].folderId === fid) count++; }
+  return count;
+}
+function countAllInFolder(fid) {
+  var f = findFolder(state.folders, fid);
+  if (!f) return 0;
+  var n = countCardsInFolder(fid);
+  if (f.children) f.children.forEach(function(c) { n += countAllInFolder(c.id); });
+  return n;
+}
+
+function renderFolderTree() {
+  var container = document.getElementById('folderTree');
+  function render(fs, depth) {
+    depth = depth || 0;
+    return fs.map(function(f) {
+      var total = countAllInFolder(f.id);
+      var isActive = state.currentFolderId === f.id;
+      var hasMusic = false;
+      for (var id in state.cards) {
+        if (state.cards[id].folderId === f.id && state.cards[id].musicName) { hasMusic = true; break; }
+      }
+      var html = '<div class="ti' + (isActive ? ' active' : '') + '" style="padding-left:' + (20 + depth * 16) + 'px" data-fid="' + f.id + '">';
+      html += '<span class="exp">' + (f.children && f.children.length ? (f.expanded ? '▼' : '▶') : '') + '</span>';
+      html += '<span class="ficon">' + (f.expanded ? '📂' : '📁') + '</span>';
+      html += '<span class="nm">' + escHtml(f.name) + '</span>';
+      if (hasMusic) html += '<span class="mdot"></span>';
+      if (total > 0) html += '<span class="cnt">' + total + '</span>';
+      html += '<span class="acts"><button data-action="addSub" data-fid="' + f.id + '">+</button><button data-action="rename" data-fid="' + f.id + '">✎</button><button data-action="delete" data-fid="' + f.id + '">×</button></span>';
+      html += '</div>';
+      if (f.children && f.children.length) {
+        html += '<div class="tc' + (f.expanded ? '' : ' collapsed') + '">' + render(f.children, depth + 1) + '</div>';
+      }
+      return html;
+    }).join('');
+  }
+  container.innerHTML = render(state.folders);
+}
+
+function selectFolder(id) {
+  state.currentFolderId = id;
+  state.selCid = null;
+  renderFolderTree();
+  renderAll();
+}
+
+function toggleFolder(id) {
+  var f = findFolder(state.folders, id);
+  if (f) { f.expanded = !f.expanded; renderFolderTree(); }
+}
+
+function addFolder() {
+  var name = prompt('文件夹名称：', '新建文件夹');
+  if (!name || !name.trim()) return;
+  state.folders.push({ id: genId(), name: name.trim(), children: [], expanded: true, createdAt: Date.now() });
+  state.currentFolderId = state.folders[state.folders.length - 1].id;
+  saveState(); renderFolderTree();
+}
+
+function addSubFolder(parentId) {
+  var name = prompt('子文件夹名称：', '');
+  if (!name || !name.trim()) return;
+  var parent = findFolder(state.folders, parentId);
+  if (!parent) return;
+  if (!parent.children) parent.children = [];
+  var nf = { id: genId(), name: name.trim(), children: [], expanded: true, createdAt: Date.now() };
+  parent.children.push(nf);
+  parent.expanded = true;
+  state.currentFolderId = nf.id;
+  saveState(); renderFolderTree();
+}
+
+function renameFolder(id) {
+  var f = findFolder(state.folders, id);
+  if (!f) return;
+  var name = prompt('重命名：', f.name);
+  if (name && name.trim()) { f.name = name.trim(); saveState(); renderFolderTree(); }
+}
+
+function deleteFolder(id) {
+  var f = findFolder(state.folders, id);
+  if (!f) return;
+  var total = countAllInFolder(id);
+  if (!confirm('删除"' + f.name + '"' + (total > 0 ? '及 ' + total + ' 张卡片' : '') + '？')) return;
+  function remove(fs) {
+    var i = fs.findIndex(function(ff) { return ff.id === id; });
+    if (i >= 0) { fs.splice(i, 1); return true; }
+    for (var j = 0; j < fs.length; j++) {
+      if (fs[j].children && remove(fs[j].children)) return true;
+    }
+    return false;
+  }
+  remove(state.folders);
+  var fids = getFolderIds(f);
+  for (var cid in state.cards) {
+    if (fids.indexOf(state.cards[cid].folderId) >= 0) delete state.cards[cid];
+  }
+  if (state.currentFolderId === id) state.currentFolderId = null;
+  if (state.music.cid && !state.cards[state.music.cid]) stopMusic();
+  saveState(); renderFolderTree(); renderAll();
+}
+
+// === CARDS ===
+var CARD_COLORS = [
+  { n: '白色', c: 'c0', d: '#e0e0e0' },
+  { n: '奶油', c: 'c1', d: '#f5f0e0' },
+  { n: '拿铁', c: 'c2', d: '#d4c5a0' },
+  { n: '薄荷', c: 'c3', d: '#c4ddd2' },
+  { n: '薰衣草', c: 'c4', d: '#d8d0f0' },
+  { n: '蜜桃', c: 'c5', d: '#f0d0c0' },
+  { n: '天空', c: 'c6', d: '#c0d8f0' },
+  { n: '玫瑰', c: 'c7', d: '#f0c0d0' },
+  { n: '咖啡', c: 'c8', d: '#c8a878' },
+  { n: '暗夜', c: 'c9', d: '#333' }
+];
+
+function createCard(fid, opts) {
+  opts = opts || {};
+  var id = genId();
+  var card = {
+    id: id,
+    folderId: fid || (state.folders[0] ? state.folders[0].id : ''),
+    x: opts.x || 200 + Math.random() * 500,
+    y: opts.y || 200 + Math.random() * 500,
+    content: opts.content || '',
+    tags: opts.tags || [],
+    cc: opts.cc || 'c0',
+    shape: opts.shape || state.shape || 'rounded',
+    musicName: opts.musicName || null,
+    musicData: opts.musicData || null,
+    _mb: opts._mb || null,
+    imageUrls: opts.imageUrls || [],
+    videoUrls: opts.videoUrls || [],
+    children: opts.children || [],
+    createdAt: opts.createdAt || Date.now(),
+    updatedAt: opts.updatedAt || Date.now()
+  };
+  state.cards[id] = card;
+  saveState();
+  return card;
+}
+
+function updateCardContent(cid, content) {
+  var c = state.cards[cid];
+  if (!c) return;
+  c.content = content;
+  c.updatedAt = Date.now();
+  saveState();
+}
+
+function deleteCard(cid) {
+  if (!confirm('确定删除这张卡片？')) return;
+  if (state.music.cid === cid) stopMusic();
+  delete state.cards[cid];
+  if (state.selCid === cid) state.selCid = null;
+  saveState();
+  renderAll();
+}
+
+function updateCardPos(cid, x, y) {
+  var c = state.cards[cid];
+  if (!c) return;
+  c.x = x; c.y = y;
+  saveState();
+}
+
+function selectCard(cid) {
+  state.selCid = cid;
+  var all = document.querySelectorAll('.card');
+  all.forEach(function(el) { el.classList.toggle('selected', el.dataset.id === cid); });
+  var c = state.cards[cid];
+  if (c && c._mb && state.music.cid !== cid) playMusic(cid);
+}
+
+function getVisibleCards() {
+  var cards = [];
+  if (state.currentFolderId) {
+    var f = findFolder(state.folders, state.currentFolderId);
+    var fids = f ? getFolderIds(f) : [];
+    for (var id in state.cards) {
+      if (fids.indexOf(state.cards[id].folderId) >= 0) cards.push(state.cards[id]);
+    }
+  } else {
+    for (var id in state.cards) { cards.push(state.cards[id]); }
+  }
+  if (state.q) {
+    var q = state.q.toLowerCase();
+    cards = cards.filter(function(c) {
+      return stripHtml(c.content).toLowerCase().indexOf(q) >= 0 ||
+        c.tags.some(function(t) { return t.toLowerCase().indexOf(q) >= 0; }) ||
+        (c.musicName || '').toLowerCase().indexOf(q) >= 0;
+    });
+  }
+  return cards;
+}
+
+function renderAll() {
+  var wb = document.getElementById('wb');
+  var empty = document.getElementById('emptyHint');
+  var cards = getVisibleCards();
+  var tpl = document.getElementById('cardTpl');
+
+  wb.innerHTML = '';
+  empty.style.display = cards.length === 0 ? 'block' : 'none';
+
+  cards.forEach(function(card) {
+    var clone = tpl.content.cloneNode(true);
+    var el = clone.querySelector('.card');
+    el.dataset.id = card.id;
+    el.style.left = card.x + 'px';
+    el.style.top = card.y + 'px';
+    el.classList.add('s-' + (card.shape || 'rounded'));
+    if (card.cc && card.cc !== 'c0') el.classList.add(card.cc);
+    if (state.selCid === card.id) el.classList.add('selected');
+
+    var ci = CARD_COLORS.find(function(c) { return c.c === card.cc; }) || CARD_COLORS[0];
+    el.querySelector('.cdot').style.background = ci.d;
+    el.querySelector('.ctm').textContent = formatDate(card.updatedAt);
+
+    var body = el.querySelector('.cbd');
+    body.innerHTML = card.content;
+    body.addEventListener('input', function() { updateCardContent(card.id, body.innerHTML); });
+
+    // tags
+    var tagsC = el.querySelector('.ctgs');
+    (card.tags || []).forEach(function(t) {
+      var s = document.createElement('span');
+      s.className = 'ctg';
+      s.textContent = t;
+      tagsC.appendChild(s);
+    });
+
+    // music button
+    var mBtn = el.querySelector('.music-btn');
+    var mInp = el.querySelector('.mu-inp');
+    if (card.musicName && card._mb) { mBtn.classList.add('playing'); mBtn.title = card.musicName; }
+    mBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (card.musicName && card._mb) {
+        if (state.music.cid === card.id && state.music.playing) pauseMusic();
+        else playMusic(card.id);
+      } else {
+        mInp.click();
+      }
+    });
+    mInp.addEventListener('change', function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var blob = new Blob([ev.target.result], { type: file.type });
+        card._mb = blob;
+        card.musicName = file.name;
+        var br = new FileReader();
+        br.onload = function(bev) { card.musicData = bev.target.result; saveState(); };
+        br.readAsDataURL(blob.slice(0, 5 * 1024 * 1024));
+        mBtn.classList.add('playing');
+        mBtn.title = file.name;
+        saveState();
+        playMusic(card.id);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // image button
+    var iBtn = el.querySelector('.image-btn');
+    var iInp = el.querySelector('.img-inp');
+    iBtn.addEventListener('click', function(e) { e.stopPropagation(); iInp.click(); });
+    iInp.addEventListener('change', function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var img = document.createElement('img');
+        img.src = ev.target.result;
+        img.style.cssText = 'max-width:100%;border-radius:8px;margin:3px 0;cursor:pointer';
+        img.onclick = function(e2) { e2.stopPropagation(); window.open(img.src, '_blank'); };
+        body.appendChild(img);
+        body.appendChild(document.createElement('br'));
+        updateCardContent(card.id, body.innerHTML);
+        if (!card.imageUrls) card.imageUrls = [];
+        card.imageUrls.push(ev.target.result);
+        saveState();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // video button
+    var vBtn = el.querySelector('.video-btn');
+    var vInp = el.querySelector('.vid-inp');
+    vBtn.addEventListener('click', function(e) { e.stopPropagation(); vInp.click(); });
+    vInp.addEventListener('change', function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var vid = document.createElement('video');
+        vid.src = ev.target.result;
+        vid.controls = true;
+        vid.style.cssText = 'max-width:100%;border-radius:8px;margin:3px 0';
+        body.appendChild(vid);
+        body.appendChild(document.createElement('br'));
+        updateCardContent(card.id, body.innerHTML);
+        if (!card.videoUrls) card.videoUrls = [];
+        card.videoUrls.push(ev.target.result);
+        saveState();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // tag button
+    el.querySelector('.tag-btn').addEventListener('click', function(e) {
+      e.stopPropagation();
+      var t = prompt('标签名：', '');
+      if (t && t.trim() && card.tags.indexOf(t.trim()) < 0) {
+        card.tags.push(t.trim());
+        saveState();
+        renderAll();
+      }
+    });
+
+    // color button
+    el.querySelector('.color-btn').addEventListener('click', function(e) {
+      e.stopPropagation();
+      showColorMenu(card.id, e);
+    });
+
+    // delete button
+    el.querySelector('.del-btn').addEventListener('click', function(e) {
+      e.stopPropagation();
+      deleteCard(card.id);
+    });
+
+    // child count
+    if (card.children && card.children.length > 0) {
+      el.querySelector('.ccnt').textContent = card.children.length + ' 子节点';
+    }
+
+    // card events
+    el.addEventListener('pointerdown', function(e) { cardPointerDown(e, card.id); });
+    el.addEventListener('click', function(e) {
+      if (e.target === body || body.contains(e.target)) return;
+      selectCard(card.id);
+    });
+    el.addEventListener('contextmenu', function(e) { cardContextMenu(e, card.id); });
+
+    wb.appendChild(el);
+  });
+}
+
+// === CARD DRAG ===
+var dragState = null;
+
+function cardPointerDown(e, cid) {
+  if (e.target.contentEditable === 'true' || e.target.closest('.cft') || e.target.closest('.chd button')) return;
+  e.preventDefault();
+  e.stopPropagation();
+  var el = e.target.closest('.card');
+  if (!el) return;
+  var card = state.cards[cid];
+  if (!card) return;
+  dragState = { cid: cid, sx: e.clientX, sy: e.clientY, ox: card.x, oy: card.y, el: el };
+  el.classList.add('dragging');
+  el.setPointerCapture(e.pointerId);
+  selectCard(cid);
+}
+
+document.addEventListener('pointermove', function(e) {
+  if (!dragState) return;
+  var dx = (e.clientX - dragState.sx) / state.zoom;
+  var dy = (e.clientY - dragState.sy) / state.zoom;
+  dragState.el.style.left = (dragState.ox + dx) + 'px';
+  dragState.el.style.top = (dragState.oy + dy) + 'px';
+});
+
+document.addEventListener('pointerup', function(e) {
+  if (!dragState) return;
+  var dx = (e.clientX - dragState.sx) / state.zoom;
+  var dy = (e.clientY - dragState.sy) / state.zoom;
+  if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+    updateCardPos(dragState.cid, dragState.ox + dx, dragState.oy + dy);
+  }
+  dragState.el.classList.remove('dragging');
+  dragState = null;
+});
+
+// === CANVAS PAN & ZOOM ===
+var panState = null;
+var lastTapTime = 0;
+var lastTapPos = { x: 0, y: 0 };
+var cwrap = document.getElementById('cwrap');
+
+cwrap.addEventListener('pointerdown', function(e) {
+  // Don't pan if clicking on a card
+  if (e.target.closest('.card')) return;
+  panState = { sx: e.clientX, sy: e.clientY, ox: state.panX, oy: state.panY, tm: Date.now() };
+  cwrap.setPointerCapture(e.pointerId);
+});
+
+cwrap.addEventListener('pointermove', function(e) {
+  if (!panState) return;
+  state.panX = panState.ox + (e.clientX - panState.sx);
+  state.panY = panState.oy + (e.clientY - panState.sy);
+  applyTransform();
+});
+
+cwrap.addEventListener('pointerup', function(e) {
+  if (!panState) return;
+  var dx = e.clientX - panState.sx;
+  var dy = e.clientY - panState.sy;
+  var dist = Math.sqrt(dx * dx + dy * dy);
+  var now = Date.now();
+
+  if (dist < 8 && now - panState.tm < 400) {
+    // It's a click (not a meaningful drag)
+    if (lastTapTime && (now - lastTapTime) < 500 &&
+        Math.abs(e.clientX - lastTapPos.x) < 30 &&
+        Math.abs(e.clientY - lastTapPos.y) < 30) {
+      // Double tap detected - create card
+      var fid = state.currentFolderId || (state.folders[0] ? state.folders[0].id : '');
+      if (fid) {
+        var rect = cwrap.getBoundingClientRect();
+        var x = (e.clientX - rect.left - state.panX) / state.zoom - 100;
+        var y = (e.clientY - rect.top - state.panY) / state.zoom - 50;
+        var card = createCard(fid, { x: x, y: y });
+        state.selCid = card.id;
+        renderAll();
+        setTimeout(function() {
+          var el = document.querySelector('.card[data-id="' + card.id + '"]');
+          if (el) {
+            var b = el.querySelector('.cbd');
+            if (b) b.focus();
+          }
+        }, 100);
+      }
+      lastTapTime = 0;
+    } else {
+      lastTapTime = now;
+      lastTapPos = { x: e.clientX, y: e.clientY };
+    }
+  }
+  panState = null;
+});
+
+cwrap.addEventListener('wheel', function(e) {
+  if (e.ctrlKey || e.metaKey) return;
+  e.preventDefault();
+  var factor = e.deltaY < 0 ? 1.08 : 0.92;
+  var rect = cwrap.getBoundingClientRect();
+  var mx = e.clientX - rect.left;
+  var my = e.clientY - rect.top;
+  var nz = Math.min(3, Math.max(0.15, state.zoom * factor));
+  state.panX = mx - (mx - state.panX) * (nz / state.zoom);
+  state.panY = my - (my - state.panY) * (nz / state.zoom);
+  state.zoom = nz;
+  applyTransform();
+  updateZoomLabel();
+}, { passive: false });
+
+function applyTransform() {
+  var t = 'translate(' + state.panX + 'px,' + state.panY + 'px) scale(' + state.zoom + ')';
+  document.getElementById('wb').style.transform = t;
+}
+
+function zoomIn() {
+  state.zoom = Math.min(3, state.zoom * 1.2);
+  applyTransform();
+  updateZoomLabel();
+}
+
+function zoomOut() {
+  state.zoom = Math.max(0.15, state.zoom / 1.2);
+  applyTransform();
+  updateZoomLabel();
+}
+
+function updateZoomLabel() {
+  document.getElementById('zoomLabel').textContent = Math.round(state.zoom * 100) + '%';
+}
+
+function resetView() {
+  state.zoom = 1;
+  state.panX = 0;
+  state.panY = 0;
+  applyTransform();
+  updateZoomLabel();
+}
+
+function focusCard() {
+  if (!state.selCid) return;
+  var c = state.cards[state.selCid];
+  if (!c) return;
+  var rect = cwrap.getBoundingClientRect();
+  state.zoom = 1;
+  state.panX = rect.width / 2 - c.x - 100;
+  state.panY = rect.height / 2 - c.y - 40;
+  applyTransform();
+  updateZoomLabel();
+}
+
+// === THEME ===
+function setTheme(t) {
+  state.theme = t;
+  document.getElementById('themeSel').value = t;
+  var map = { coffee: 'bg-c', ocean: 'bg-o', forest: 'bg-f', sunset: 'bg-s', dark: 'bg-n' };
+  cwrap.className = 'cwrap ' + (map[t] || 'bg-d');
+  saveState();
+}
+
+// === SHAPE ===
+function setShape(s) {
+  state.shape = s;
+  var btns = document.querySelectorAll('.shapes button');
+  btns.forEach(function(b) { b.classList.toggle('active', b.dataset.shape === s); });
+  if (state.selCid && state.cards[state.selCid]) {
+    state.cards[state.selCid].shape = s;
+  }
+  saveState();
+  renderAll();
+}
+
+// === MUSIC ===
+function playMusic(cid) {
+  var c = state.cards[cid];
+  if (!c || !c._mb) return;
+  if (state.music.audio) {
+    state.music.audio.pause();
+    URL.revokeObjectURL(state.music.audio.src);
+  }
+  var url = URL.createObjectURL(c._mb);
+  var a = new Audio(url);
+  a.loop = true;
+  a.play().catch(function() {});
+  state.music = { cid: cid, audio: a, playing: true };
+  updateNowPlaying();
+}
+
+function pauseMusic() {
+  if (state.music.audio) { state.music.audio.pause(); state.music.playing = false; }
+  updateNowPlaying();
+}
+
+function toggleMusic() {
+  if (!state.music.audio) return;
+  if (state.music.playing) { pauseMusic(); }
+  else { state.music.audio.play().catch(function() {}); state.music.playing = true; updateNowPlaying(); }
+}
+
+function stopMusic() {
+  if (state.music.audio) {
+    state.music.audio.pause();
+    URL.revokeObjectURL(state.music.audio.src);
+  }
+  state.music = { cid: null, audio: null, playing: false };
+  updateNowPlaying();
+}
+
+function updateNowPlaying() {
+  var np = document.getElementById('np');
+  var c = state.music.cid ? state.cards[state.music.cid] : null;
+  if (c && c.musicName) {
+    np.classList.remove('hidden');
+    document.getElementById('npTitle').textContent = c.musicName;
+    document.getElementById('npCard').textContent = stripHtml(c.content).substring(0, 30) || '';
+    document.getElementById('npPlayBtn').textContent = state.music.playing ? '⏸' : '▶';
+  } else {
+    np.classList.add('hidden');
+  }
+}
+
+// === CONTEXT MENU ===
+function cardContextMenu(e, cid) {
+  e.preventDefault();
+  e.stopPropagation();
+  selectCard(cid);
+  var c = state.cards[cid];
+  var m = document.getElementById('cm');
+  m.innerHTML = '<div class="cmi" data-action="addChild" data-cid="' + cid + '">🔗 添加子节点</div>' +
+    '<div class="cmi" data-action="duplicate" data-cid="' + cid + '">📋 复制卡片</div>' +
+    '<div class="cmi" data-action="focus" data-cid="' + cid + '">⊙ 定位卡片</div>' +
+    (c.musicName ? '<div class="cmi" data-action="toggleMusic" data-cid="' + cid + '">' + (state.music.cid === cid && state.music.playing ? '⏸ 暂停音乐' : '▶ 播放音乐') + '</div>' : '') +
+    '<div class="dv"></div>' +
+    '<div class="cmi" data-action="delete" data-cid="' + cid + '" style="color:#d00">🗑 删除</div>';
+  showContextMenu(e, m);
+}
+
+function showContextMenu(e, m) {
+  m.style.left = Math.min(e.clientX, window.innerWidth - 200) + 'px';
+  m.style.top = Math.min(e.clientY, window.innerHeight - 300) + 'px';
+  m.classList.add('show');
+  setTimeout(function() { document.addEventListener('click', hideContextMenu, { once: true }); }, 0);
+}
+
+function hideContextMenu() {
+  document.getElementById('cm').classList.remove('show');
+}
+
+function showColorMenu(cid, e) {
+  var m = document.getElementById('cm');
+  var card = state.cards[cid];
+  m.innerHTML = '<div style="padding:6px 14px;font-size:10px;color:#999">选择颜色</div>' +
+    CARD_COLORS.map(function(c) {
+      return '<div class="cmi" data-action="setColor" data-cid="' + cid + '" data-color="' + c.c + '"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:' + c.d + ';border:1px solid #ddd;margin-right:6px"></span>' + c.n + (card.cc === c.c ? ' ✓' : '') + '</div>';
+    }).join('');
+  showContextMenu(e, m);
+}
+
+// Context menu click handler
+document.getElementById('cm').addEventListener('click', function(e) {
+  var item = e.target.closest('.cmi');
+  if (!item) return;
+  var action = item.dataset.action;
+  var cid = item.dataset.cid;
+  hideContextMenu();
+
+  switch (action) {
+    case 'addChild':
+      var p = state.cards[cid];
+      if (!p) return;
+      var child = createCard(p.folderId, { x: p.x + 280, y: p.y + Math.random() * 100 - 50 });
+      if (!p.children) p.children = [];
+      p.children.push(child.id);
+      state.selCid = child.id;
+      saveState(); renderAll();
+      break;
+    case 'duplicate':
+      var orig = state.cards[cid];
+      if (!orig) return;
+      var dup = createCard(orig.folderId, {
+        x: orig.x + 40, y: orig.y + 40,
+        content: orig.content, tags: orig.tags.slice(),
+        cc: orig.cc, shape: orig.shape,
+        musicName: orig.musicName, musicData: orig.musicData, _mb: orig._mb,
+        imageUrls: orig.imageUrls.slice(), videoUrls: orig.videoUrls.slice()
+      });
+      state.selCid = dup.id;
+      renderAll();
+      break;
+    case 'focus':
+      state.selCid = cid;
+      focusCard();
+      break;
+    case 'toggleMusic':
+      if (state.music.cid === cid) { state.music.playing ? pauseMusic() : playMusic(cid); }
+      else playMusic(cid);
+      break;
+    case 'delete':
+      deleteCard(cid);
+      break;
+    case 'setColor':
+      var cc = item.dataset.color;
+      var card2 = state.cards[cid];
+      if (card2) { card2.cc = cc; saveState(); renderAll(); }
+      break;
+  }
+});
+
+// === IMPORT / EXPORT ===
+function exportData() {
+  var ts = { folders: state.folders, cards: {}, theme: state.theme, shape: state.shape };
+  for (var id in state.cards) {
+    var c = state.cards[id];
+    var copy = {};
+    for (var k in c) { if (k !== '_mb') copy[k] = c[k]; }
+    ts.cards[id] = copy;
+  }
+  var blob = new Blob([JSON.stringify(ts, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'notes-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('已导出');
+}
+
+function importData(ev) {
+  var file = ev.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var d = JSON.parse(e.target.result);
+      if (!d.folders || !d.cards) throw new Error('Invalid');
+      if (!confirm('导入将覆盖当前数据。\n' + d.folders.length + ' 个文件夹\n' + Object.keys(d.cards).length + ' 张卡片\n确定？')) return;
+      state.folders = d.folders;
+      state.cards = d.cards;
+      state.theme = d.theme || 'default';
+      state.shape = d.shape || 'rounded';
+      Object.values(state.cards).forEach(function(c) {
+        if (c.musicData) {
+          try {
+            var parts = c.musicData.split(',');
+            var bs = atob(parts[1] || '');
+            var mime = (c.musicData.match(/data:([^;]+)/) || [])[1] || 'audio/mpeg';
+            var ab = new ArrayBuffer(bs.length);
+            var ia = new Uint8Array(ab);
+            for (var i = 0; i < bs.length; i++) ia[i] = bs.charCodeAt(i);
+            c._mb = new Blob([ab], { type: mime });
+          } catch(ex) {}
+        }
+      });
+      state.currentFolderId = null;
+      state.selCid = null;
+      stopMusic();
+      saveState();
+      renderFolderTree();
+      renderAll();
+      document.getElementById('themeSel').value = state.theme;
+      setTheme(state.theme);
+      toast('导入成功');
+    } catch(ex) {
+      alert('导入失败：文件格式不正确');
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';
+}
+
+// === SEARCH ===
+function searchCards() {
+  state.q = document.getElementById('searchInput').value;
+  renderAll();
+}
+
+// === MOBILE SIDEBAR ===
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sbOverlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sbOverlay').classList.remove('show');
+}
+
+// === UTILS ===
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function stripHtml(s) { var d = document.createElement('div'); d.innerHTML = s; return d.textContent || ''; }
+function formatDate(ts) {
+  if (!ts) return '';
+  var d = new Date(ts);
+  var diff = Date.now() - d;
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function toast(msg) {
+  var t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.remove(); }, 2500);
+}
+
+// === KEYBOARD ===
+document.addEventListener('keydown', function(e) {
+  if (e.target.contentEditable === 'true' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  switch (e.key.toLowerCase()) {
+    case 'delete': case 'backspace': if (state.selCid) deleteCard(state.selCid); break;
+    case 'n': if (e.ctrlKey || e.metaKey) { e.preventDefault(); addCardToCurrent(); } break;
+    case 'f': if (e.ctrlKey || e.metaKey) { e.preventDefault(); document.getElementById('searchInput').focus(); } break;
+    case '0': if (e.ctrlKey || e.metaKey) { e.preventDefault(); resetView(); } break;
+    case 'escape': state.selCid = null; state.q = ''; document.getElementById('searchInput').value = ''; renderAll(); hideContextMenu(); break;
+  }
+});
+
+function addCardToCurrent() {
+  var fid = state.currentFolderId || (state.folders[0] ? state.folders[0].id : '');
+  if (!fid) return;
+  var rect = cwrap.getBoundingClientRect();
+  var x = (rect.width / 2 - state.panX) / state.zoom - 100;
+  var y = (rect.height / 2 - state.panY) / state.zoom - 50;
+  var card = createCard(fid, { x: x, y: y });
+  state.selCid = card.id;
+  selectFolder(fid);
+  renderAll();
+  setTimeout(function() {
+    var el = document.querySelector('.card[data-id="' + card.id + '"]');
+    if (el) { var b = el.querySelector('.cbd'); if (b) b.focus(); }
+  }, 100);
+}
+
+// === INIT ===
+function init() {
+  // Login
+  buildAvatarRow();
+  if (!loadUser()) {
+    document.getElementById('loginOverlay').classList.remove('hidden');
+  } else {
+    document.getElementById('loginOverlay').classList.add('hidden');
+    updateSidebarUser();
+  }
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  document.getElementById('skipBtn').addEventListener('click', skipLogin);
+  document.getElementById('loginName').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  // Load data
+  loadState();
+
+  // Theme
+  document.getElementById('themeSel').value = state.theme;
+  setTheme(state.theme);
+
+  // Shape buttons
+  document.querySelectorAll('.shapes button').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.shape === state.shape);
+  });
+
+  // Toolbar buttons
+  document.getElementById('btnAddFolder').addEventListener('click', addFolder);
+  document.getElementById('btnAddCard').addEventListener('click', addCardToCurrent);
+  document.getElementById('btnExport').addEventListener('click', exportData);
+  document.getElementById('btnImport').addEventListener('click', function() { document.getElementById('importFile').click(); });
+  document.getElementById('importFile').addEventListener('change', importData);
+  document.getElementById('hamburger').addEventListener('click', toggleSidebar);
+  document.getElementById('sbOverlay').addEventListener('click', closeSidebar);
+  document.getElementById('sidebarAvatar').addEventListener('click', openProfile);
+  document.getElementById('searchInput').addEventListener('input', searchCards);
+  document.getElementById('btnFocus').addEventListener('click', focusCard);
+  document.getElementById('btnReset').addEventListener('click', resetView);
+  document.getElementById('btnZoomIn').addEventListener('click', zoomIn);
+  document.getElementById('btnZoomOut').addEventListener('click', zoomOut);
+  document.getElementById('npPlayBtn').addEventListener('click', toggleMusic);
+  document.getElementById('npStopBtn').addEventListener('click', stopMusic);
+
+  // Folder tree click delegation
+  document.getElementById('folderTree').addEventListener('click', function(e) {
+    var ti = e.target.closest('.ti');
+    if (!ti) return;
+    var fid = ti.dataset.fid;
+
+    // Check if clicking on action buttons
+    var actBtn = e.target.closest('[data-action]');
+    if (actBtn) {
+      var action = actBtn.dataset.action;
+      var afid = actBtn.dataset.fid || fid;
+      if (action === 'addSub') addSubFolder(afid);
+      else if (action === 'rename') renameFolder(afid);
+      else if (action === 'delete') deleteFolder(afid);
+      return;
+    }
+    // Toggle expand/collapse on arrow click
+    if (e.target.classList.contains('exp')) {
+      toggleFolder(fid);
+      return;
+    }
+    selectFolder(fid);
+  });
+
+  // Theme selector
+  document.getElementById('themeSel').addEventListener('change', function() { setTheme(this.value); });
+
+  // Shape buttons
+  document.querySelectorAll('.shapes button').forEach(function(b) {
+    b.addEventListener('click', function() { setShape(this.dataset.shape); });
+  });
+
+  // Initial render
+  renderFolderTree();
+  renderAll();
+  applyTransform();
+  updateZoomLabel();
+  updateNowPlaying();
+
+  if (state.folders.length > 0 && !state.currentFolderId) {
+    state.currentFolderId = state.folders[0].id;
+    renderFolderTree();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
